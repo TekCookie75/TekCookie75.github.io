@@ -41,7 +41,7 @@ However, before we can start with the actual description of our minimal infrastr
 
 From the official [documentation](https://docs.fedoraproject.org/en-US/fedora-coreos/producing-ign/) we copy the minimal working example. Make sure to replace the `ssh_authorized_key` with the one you are currently using!
 
-```YAML
+```yaml
 variant: fcos
 version: 1.5.0
 passwd:
@@ -61,7 +61,7 @@ podman run -ti --rm quay.io/coreos/mkpasswd --method=yescrypt
 
 Another advantage of this approach is that it will likely run on Windows as well. Anyways, once we have generated the password hash, we can simply extend our configuration:
 
-```YAML
+```yaml
 variant: fcos
 version: 1.5.0
 passwd:
@@ -194,7 +194,7 @@ method=manual
 
 To apply this configuration within our Ignition process, we have to add it to the `Fedora-CoreOS.yaml` by adding a `storage.files` entry. The updated configuration file is provided below.
 
-```YAML
+```yaml
 variant: fcos
 version: 1.5.0
 storage:
@@ -212,7 +212,7 @@ passwd:
 
 Next, let us set a custom hostname, e.g., `gitea`, and disable `systemd` pager when printing messages. To this end, we extend the `files` section by two additional entries.
 
-```YAML
+```yaml
 variant: fcos
 version: 1.5.0
 storage:
@@ -260,7 +260,7 @@ The last setting will simply decrease the log level such that no longer disturbi
 
 Finally, we may like to enable automatic updates. Fedora CoreOS provides scheduled updates by the `zincati` service. For the sake of this blog post, I will use the following update strategy, placed in `config/update-strategy.toml`.
 
-```TOML
+```toml
 [updates]
 strategy="periodic"
 
@@ -288,7 +288,7 @@ Notice, that in the example depiction below I also put `hostname` and `systemd-p
 
 The updated `Fedora-CoreOS.yaml` is shown below. Compared to the previous version, here we only reference the configuration files created above. Also I added a new user named `git`, in which context the later `gitea` instance will run. Note that it is best practice to maintain the principle of least privilege. Hence running any exposed software like our `gitea` within the scope of `core` user is not a good idea, since `core` is allowed to use `sudo` without credentials by default! Also notice that I assigned each of the users a **weak password**. This is done for our convenience in the testing phase only and **should be removed in production later on!**
 
-```YAML
+```yaml
 variant: fcos
 version: 1.5.0
 
@@ -399,7 +399,7 @@ The following section will assume that you are already comfortable with `podman`
 
 Anyways, before adding `gitea` and related containers to our model, let us first check, what `gitea` is expecting from us. Considering the [official documentation](https://docs.gitea.com/installation/install-with-docker-rootless) the following file is provided to deploy `gitea` using `docker compose`.
 
-```YAML
+```yaml
 version: "2"
 
 volumes:
@@ -594,7 +594,7 @@ After creating each of these files, our working repository should look roughly s
 
 To make use of these service files, we have to add them to our Ignition file. However, this is as simple as adding the following lines to our `Fedora-CoreOS.yaml`.
 
-```YAML
+```yaml
 storage:
   files:
    - path: /home/git/.config/containers/containers-environment
@@ -653,7 +653,7 @@ storage:
 
 While the `yaml` file is not very conscious, the syntax is easy to understand and maintain. Anyways, if you would try to deploy the machine yet, you will likely run into an issue where all the created `systemd` like units will not start. The reason is *"kind of bug, but feature of CoreOS"* thing. CoreOS is not able to create all the unit files in `/home/git/.config/containers/systemd/` since this directory does not exist yet! Thus, we have to manually create it; and all the parents. Spoken in code, we have to add
 
-```YAML
+```yaml
 storage:
   directories:
     # setting up directory permissions required to avoid
@@ -681,7 +681,7 @@ Unfortunately, this will add a lot of boiler code to our model. I hope that in f
 
 Also at that time you may like to add and enable `podman-auto-update.timer` in your Ignition configuration. To this end, the following code snippets needs to be merged inside your `Fedora-CoreOS.yaml` configuration file.
 
-```YAML
+```yaml
 systemd:
   units:
    # Enable Podman auto-updater for container images
@@ -743,7 +743,7 @@ We start by creating a new virtual machine on our `Proxmox VE` host. The paramet
 
 If you also decide to use a second disk like me, which is the recommended way (!), do not forget to set it up in the descriptive model. To this end, the following changes are required to the `Fedora-CoreOS.yaml`.
 
-```YAML
+```yaml
 storage:
   disks:
     - device: /dev/sdb
