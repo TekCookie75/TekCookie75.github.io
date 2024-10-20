@@ -23,21 +23,22 @@ The first process launched by Microsoft windows is `System.exe`. According to th
 Afterwards, the `System.exe` will spawn the `csrss.exe`, the `wininit.exe`, and the `winlogon.exe` via the *Session Manager Subsystem* according to the following depiction:
 
 ![Core-Processes](/assets/img/_posts/2024-09-28-Windows-Core-Processes/Windows-Core-Processes.png)
+![Core-Processes]({{ '/assets/img/_posts/2024-09-28-Windows-Core-Processes/Windows-Core-Processes.png' | relative_url }})
 
 The depicted processes are shortly descriped in the table below.
 
 | **Process** | **Description** |
 | ----------- | --------------- |
-| `system.exe`  | <ul><li>always PID 4</li><li>first process created in boot sequence</li><li>run in privileged kernel mode only</li></ul> |
-| `smss.exe`    | <ul><li>`system.exe` is always the parent!</li><li>two instances spawn; SESSION 0 and SESSION 1</li><li>process terminates after execution!</li></ul> |
-| `csrss.exe`   | <ul><li>spawned by `smss.exe`</li><li>does not have parent</li><li>two instances spawn; SESSION 0 and SESSION 1</li><li>provides Win-Api</li><li>Handles power cycles and Scheduling/Threads</li></ul> |
-| `wininit.exe` | <ul><li>spawned by `smss.exe`</li><li>does not have parent</li><li>only runs in privileged SESSION 0</li></ul> |
-| `services.exe`| <ul><li>spawned by `wininit.exe`</li><li>handles services</li><li>only runs in privileged SESSION 0</li></ul> |
-| `lsass.exe`   | <ul><li>spawned by `wininit.exe`</li><li>Local Security and Account Sub-System</li><li>only runs in privileged SESSION 0</li></ul> |
-| `lsaiso.exe`  | <ul><li>spawned by `wininit.exe`</li><li>Part of Local Security and Account Sub-System</li><li>only runs in privileged SESSION 0</li><li>provides sandbox features for `lsass.exe`</li></ul> |
-| `svchost.exe` | <ul><li>spawned by `services.exe`</li><li>runs tasks from *.dll files</li><li>can have various owners depending on the concrete service</li><li>always runs with flag `-k`</li></ul> |
-| `winlogon.exe` | <ul><li>spawned by `smss.exe`</li><li>does not have parent</li><li>only runs in user SESSION 1</li><li>login management</li><li></li>loads profile from `NTUSER.DAT` and executes Shell Environment (e.g., `explorer.exe`</ul> |
-| `userinit.exe` | <ul><li>spawned by `winlogon.exe`</li><li>handles initalization of user profile</li><li>only runs in user SESSION 1</li></ul> |
-| `explorer.exe` | <ul><li>spawned by `userinit.exe`</li><li>user shell</li><li>only runs in user SESSION 1</li></ul> |
+| `system.exe`  | - always PID 4  <br/>- first process created in boot sequence <br/>- run in privileged kernel mode only |
+| `smss.exe`    | - `system.exe` is always the parent! <br/>- two instances spawn; SESSION 0 and SESSION 1 <br/>- process terminates after execution! |
+| `csrss.exe`   | - spawned by `smss.exe` <br/>- does not have parent <br/>- two instances spawn; SESSION 0 and SESSION 1 <br/>- provides Win-API <br/>- Handles power cycles and Scheduling/Threads |
+| `wininit.exe` | - spawned by `smss.exe` <br/>- does not have parent <br/>- only runs in privileged SESSION 0 |
+| `services.exe`| - spawned by `wininit.exe` <br/>- handles services <br/>- only runs in privileged SESSION 0 |
+| `lsass.exe`   | - spawned by `wininit.exe` <br/>- Local Security and Account Sub-System <br/>- only runs in privileged SESSION 0 |
+| `lsaiso.exe`  | - spawned by `wininit.exe` <br/>- Part of Local Security and Account Sub-System <br/>- only runs in privileged SESSION 0 <br/>- provides sandbox features for `lsass.exe` |
+| `svchost.exe` | - spawned by `services.exe` <br/>- runs tasks from *.dll files <br/>- can have various owners depending on the concrete service <br/>- always runs with flag `-k`|
+| `winlogon.exe` | - spawned by `smss.exe` <br/>- does not have parent <br/>- only runs in user SESSION 1 <br/>- login management <br/>- loads profile from `NTUSER.DAT` and executes Shell Environment, e.g., `explorer.exe` |
+| `userinit.exe` | - spawned by `winlogon.exe` <br/>- handles initalization of user profile <br/>- only runs in user SESSION 1 |
+| `explorer.exe` | - spawned by `userinit.exe` <br/>- user shell <br/>- only runs in user SESSION 1 |
 
 All processes created by the user later on will have `explorer.exe` as parent process.
