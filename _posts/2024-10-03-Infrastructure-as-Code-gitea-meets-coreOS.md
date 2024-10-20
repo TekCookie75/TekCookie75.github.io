@@ -17,7 +17,7 @@ author: TekCookie75
 
 *Infrastructure as code (IaC)* uses DevOps methodology and versioning with a descriptive model to define and deploy infrastructure. Just as the same source code always generates the same binary, an IaC model generates the same environment every time it deploys. 
 
-In this blog post, we will use [Ignition](https://docs.fedoraproject.org/en-US/fedora-coreos/producing-ign/) to create a descriptive model of an Fedora Core OS infrastructure, including `podman` providing a basic `gitea` container. We will go through each of the steps required from deploying a minimal CoreOS instance to fully working `gitea` server. In the end of this post, you will have a `git` repository hosting the entire infrastructure model by means of code. You will be enabled to extend your infrastructure on your own. Deployment and Re-deployment will be as simple as executing a few scripts, while the data will remain persistent over each re-creation.
+In this blog post, we will use [Ignition](https://docs.fedoraproject.org/en-US/fedora-coreos/producing-ign/) to create a descriptive model of a Fedora Core OS infrastructure, including `podman` providing a basic `gitea` container. While developing the descriptive model, we will focus on the basic principles of *Infrastructure as code* only. Thus, we will not implement security best practices, like securing `gitea` behind a reverse proxy or implementing any advanced authentication mechanism. Anyways, in the end of this post, you will have a `git` repository hosting the entire infrastructure model by means of code. You will be enabled to extend your infrastructure model on your own to develop this proof of concept presented here into a fully productive `gitea` server for home lab use. Deployment and Re-deployment will be as simple as executing a few scripts, while the data will remain persistent over each re-creation.
 
 For the sake of this blog post, we will have to install CoreOS several times, each time improving our descriptive model. To this end, it is recommend to install the operating system to any kind of virtualization environment. Even more, I would recommend to conduct the first few installations in a local development and testing environment to speed up the process. For the sake of this blog post I will use a local *Fedora Workstation* machine with `libvirt` / `virish` to manage virtual machines. Later, once the model is in a productive state, I will transit to Proxmox VE node. 
 
@@ -35,7 +35,7 @@ So do not lose any time and let us directly dive into the basics of Fedora CoreO
 -----
 ## Part 1: CoreOS Installation - From Ignition to Instance
 
-Let us start very simple, and create our first instance of Fedora CoreOS. This machine will not yet very useful itself, but will explain the basic steps to walk-through in order to deploy CoreOS from code. Also this section will discuss the required build tools.
+Let us start very simple, and create our first instance of Fedora CoreOS. This machine will not yet be very useful itself, but will explain the basic steps to walk-through in order to deploy CoreOS from code. Also this section will discuss the required build tools.
 
 However, before we can start with the actual description of our minimal infrastructure, we should download the Fedora CoreOS image from the official [page](https://fedoraproject.org/de/coreos/download?stream=stable&arch=x86_64#download_section) first. Make sure to use the correct architecture. For the sake of this post, we will use the bare-metal `x86_64` installer `iso` for the production environment later on; and the backing storage `*.qcow2` cloud image for the development instance now. So, I will will download the virtualized QEMU image for this section.
 
@@ -51,7 +51,9 @@ passwd:
         - ssh-rsa AAAA...
 ```
 
-If you do not have the possibility to used SSH for some reason, you can add a password to the `core` user as well. The following sample will demonstrate this. By using a password you will be enabled to log in into CoreOS from the console later one. Especially during development and testing this can be an advantage, however make sure to later remove this section from your configuration when transiting to production environment.
+If you do not have the possibility to use SSH in your development environment for some reason, you can add a password to the `core` user as well, however for security reasons consider removing the password instance before transitioning to a productive environment.
+
+By using a password you will be enabled to log into CoreOS from the console. Especially during development and testing this can be an advantage, however once again, make sure to later remove this section from your configuration when transitioning to production environment or replace it by a very secure password!
 
 To generate a password hash we have to use `mkpassword` utility from the `whois` package. Since some distribution will ship with slightly different implementations of `mkpassword`, I would recommend to use `podman` or `docker` to generate the password by the following command:
 
@@ -68,6 +70,7 @@ passwd:
   users:
     - name: core
       # Plaintext password: core
+      # REMOVE THIS LINE IN PRODUCTION ENVIRONMENT (or replace by secure password at least!)
       password_hash: $y$j9T$UQQ5Ku9IGuoKKsus1FQu/0$ff/nk2KFw5U5KuNxH.nzmMZFFt7LaagWxHr/gUVxUU6
       ssh_authorized_keys:
         - ssh-rsa AAAA...
@@ -135,7 +138,7 @@ In the following sections of this blog post, we will build up on this basic `yam
 
 In the last section, we have introduced our minimal working descriptive model of our new infrastructure. Theoretically, from here on, we could install `podman`, `gitea` and setup all the required services and files we like by hand. However, there is a better alternative: Describing the desired state in the Ignition file! 
 
-But before improving the model, remember how tiddly *Infrastructure as Code* is related with versioning. Hence, now is the perfect time to enable version tracking for our descriptive model we will build up in the next sections. Thus, create a new directory. For the sake of this lab I will simply name it `TekCookie-gitea`. In side this directory, we will initialize a new git repository.
+But before improving the model, remember how close *Infrastructure as Code* is linked with versioning. Hence, now is the perfect time to enable version tracking for our descriptive model we will build up in the next sections. Thus, create a new directory. For the sake of this lab I will simply name it `TekCookie-gitea`. Inside this directory, we will initialize a new git repository.
 
 ```bash
 git init /home/TekCookie75/Projects/TekCookie-gitea
@@ -172,7 +175,7 @@ git commit -m ":tada: Initial commit"
 
 Now, versioning is enabled on our infrastructure model and we can finally start to extend our minimal CoreOS instance from the previous section by adding more and more descriptive content to the `Fedora-CoreOS.yaml`. Notice, that all the configuration is available in the final model published on my coresponding GitHub [project](https://github.com/TekCookie75/IaC-gitea-poc).
 
-The first thing we may like to do is setting a custom network configuration. To this end, we create a new file called `network.conf` and place it inside the `config` directory. The basic network setup follows the principles and syntax of `netplan`. So if you are unfamiliar with this, a lot of good resources will be available on the internet. Below is mine config used in my local lab environment. Your configuration may differ depending on how your local setup and *virtual bridge* device is configured in your environment.
+The first thing we may like to do is setting a custom network configuration. We create a new file called `network.conf` and place it inside the `config` directory. The basic network setup follows the principles and syntax of `netplan`. So if you are unfamiliar with this, a lot of good resources will be available on the internet. Below is my config used in my local lab environment. Your configuration may differ depending on how your local setup and *virtual bridge* device is configured in your environment.
 
 **Notice** *Your network interface name may be different depending on hardware or virtualization platform. Here I assume `enp6s18`.*
 
@@ -443,7 +446,7 @@ services:
 
 Inspecting this `yaml` file, we spot two containers, namely the actual `gitea` one and a database container, here `mysql`. Also, we have two named volumes, i.e., `gitea-data` and `gitea-config` holding user- and configuration data for `gitea`; as well as several environmental parameters like database credentials.
 
-Considering the goal of infrastructure as code, our ultimate goal will be to split up this large`compose` file into several easily maintainable modules and embed these into our descriptive model. Also, we will have to make minor syntactical transitions due to the usage of `podman` instead of `docker`. However, the benefits will be worse the pain once the model is defined!
+Considering the goal of infrastructure as code, our ultimate goal will be to split up this large`compose` file into several easily maintainable modules and embed these into our descriptive model. Also, we will have to make minor syntactical transitions due to the usage of `podman` instead of `docker`. However, the benefits will be worth the pain once the model is defined!
 
 Now, let us begin by creating a basic `podman` `network` used for the internal communication between the `gitea` container and the database container. While this step is optional, it will provide us with network segmentation and isolation in the first place. Thus, when later extending our infrastructure by another service, we can separate it to different network. The syntax will be very simple, the only requirement is that the file does have `*.network` extension. In our repository we create a new file named `gitea-net.network` inside the `podman/networks` directory.
 
@@ -557,7 +560,7 @@ WantedBy=multi-user.target default.target
 
 The structure is nearly identically with the one for `mariadb.container`. Anyways, let us focus on some new aspects of `podman/containers/gitea.container` unit file. Here, the `PublishPort` parameter is used to make the internal ports `2222` (*SSH*) and `3000` (*Web*) from the `gitea-net.network` available to the outside, i.e., to our host. So, we will be able to access these ports from external.
 
-To sum up, compare and note the similarities to the initial discussed `compose.yaml` file from `gitea`. Also notice how much more clean these files will look. Also, all the environmental parameters were separated to an external file named `container-enviornment` for more easy maintainable.
+To sum up, compare and note the similarities to the initial discussed `compose.yaml` file from `gitea`. Also notice how much more clean these files will look. Also, all the environmental parameters were separated to an external file named `container-enviornment` for maintainability.
 
 *Here, I used one environment file for both containers, since they are somehow inextricably linked. However, splitting them up into one environment per container would be possible.*
 
@@ -850,13 +853,14 @@ That's it for this long post. I hope you have understood the basic principles of
 
 Even if this blog post ended here, there is a lot of space for improvements. To name just a few ideas:
 
+- This proof of concept project exposes `gitea` on ports 2222 and 3000 without implementing TLS veryfication. A next natural step will be to secure the `gitea` instance behind a reverse proxy implementing `HTTPS` and some form of secret management.
 - In the current version, `git` contains the `environment` file containing plain-text credentials for the database. If you decide to host your model on a public place, you should definitively improve on this!
 - To make the project scale better we may install an container orchestration like `portainer`, and then manage the `gitea` stack inside `portainer`.
 - Using Ignition / Butane merge feature, the code can even be more modularization and refactored to your specific needs. Automation and pipeline development may be a good extend to this project!
 
 So you see, there is a lot we can continue on to have a more secure and robust infrastructure. Consider the current projects state as starting point only! Personally, I will not continuing on any improvement. Instead I plan to come back to you with another blog post elaborating on my Kubernetes setup based on TalOS, which I am currently using in my Home Lab. So stay tuned for the next adventure. :-) 
 
-And never forget, security and robustness are processes not a terminating products. So with these words in mind have a wonderful day and enjoy hacking.
+And never forget, security and robustness are processes not terminating products. So with these words in mind have a wonderful day and enjoy hacking.
 
 Thank you for reading!
 
