@@ -22,8 +22,7 @@ The first process launched by Microsoft windows is `System.exe`. According to th
 
 Afterwards, the `System.exe` will spawn the `csrss.exe`, the `wininit.exe`, and the `winlogon.exe` via the *Session Manager Subsystem* according to the following depiction:
 
-![Core-Processes](/assets/img/_posts/2024-09-28-Windows-Core-Processes/Windows-Core-Processes.png)
-![Core-Processes]({{ '/assets/img/_posts/2024-09-28-Windows-Core-Processes/Windows-Core-Processes.png' | relative_url }})
+![Core-Processes](https://github.com/TekCookie75/TekCookie75.github.io/tree/master/assets/img/_posts/2024-09-28-Windows-Core-Processes/Windows-Core-Processes.png)
 
 The depicted processes are shortly descriped in the table below.
 
