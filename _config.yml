@@ -93,6 +93,13 @@ share-links-active:
   linkedin: true
   vk: false
 
+# Custom URL setting to use our own domain instead of
+# "https://github.com/TekCookie75/TekCookie75.github.io"
+url: "https://blog.tekcookie75.net/"
+
+# Leave this blanc if using a custom domain
+baseurl: ''
+
 # How to display the link to your website in the footer
 # Remove this if you don't want a link in the footer
 url-pretty: "blog.TekCookie75.net"
