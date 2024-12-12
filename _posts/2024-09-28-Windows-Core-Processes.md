@@ -24,6 +24,8 @@ Afterwards, the `System.exe` will spawn the `csrss.exe`, the `wininit.exe`, and 
 
 ![WindowsCoreProcesses](/assets/img/_posts/2024-09-28-Windows-Core-Processes/Windows-Core-Processes.png)
 
+<img src="{{ "/assets/img/_posts/2024-09-28-Windows-Core-Processes/Windows-Core-Processes.png" | prepend: site.baseurl | prepend: site.url}}" alt="Windows Core Processes Overview" />
+
 The depicted processes are shortly descriped in the table below.
 
 | **Process** | **Description** |
