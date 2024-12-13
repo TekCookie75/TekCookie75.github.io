@@ -28,7 +28,7 @@ The Waifu University team took triage collections from the affected hosts using 
 
 Below is an image of the infected part of the Waifu University network that the client is concerned with.
 
-![[https://github.com/TekCookie75/TekCookie75.github.io/tree/master/assets/img/_posts/2024-12-15-XINTRA-Labs-Waifu-University/XINTRA-Waifu-University.png]]
+![Waifu-University](/assets/img/2024-12-15-XINTRA-WaifuUniversity.png)
 
 
 # An Initial Triage
@@ -117,11 +117,11 @@ From the statistics we can observe, that we have eight unique `azure.activitylog
 
 Next, we need to figure out which of the logins succeeded and granted the threat actor initial access to the Waifu University. To figure out this, we remove our previous filter and restrict our search to event data holding `azure.activitylogs.identity_name`, while at the same time focusing on the already known time interval.  For convenience reasons we add the `description`, `result` and `principal name` fields to obtain a table output like in the depiction below.
 
-![[https://github.com/TekCookie75/TekCookie75.github.io/tree/master/assets/img/_posts/2024-12-15-XINTRA-Labs-Waifu-University/XINTRA-WaifuUniversity-ELK.png]]
+![Waifu-University-ELK](/assets/img/2024-12-15-XINTRA-WaifuUniversity-ELK.png)
 
 Sorting the logs from new to old, we observe a change in `description`. Nearly all events confirm a invalid user name or password, however on `March 3, 2024` at `11:55:04.699` the attacker seemed to succeed in guessing valid credentials for the account of **Ignazio Vanderplas** (`ivanderplas1@waifu.phd`), since now Entra requests multi-factor authentication for the account due to unknown/new region.
 
-![[https://github.com/TekCookie75/TekCookie75.github.io/tree/master/assets/img/_posts/2024-12-15-XINTRA-Labs-Waifu-University/XINTRA-WaiFu-MFA.png]]
+![Waifu-MFA-required](/assets/img/2024-12-15-XINTRA-WaifuUniversity-ELK-MFA.png)
 
 Next, let us follow the path and filter on `azure.activitylogs.result_type: 50076` to examine the *MFA required* events. In the first place, we spot one MFA request only. However our current filters also restrict us by time and source IP. Sometimes attackers use delayed attacks or change their provider / IP settings between brute-force and the actual attack. Hence, we should soften the filters. Indeed, we observe a lot of *"Authentication failed during strong authentication request"* (`suire.activitylog.result_type: 500121`) events now. The originating provider is `AS-CHOOPA` with ID `20,473`. The many MFA attempts are an indicator that the threat actor tried to mount a *MFA fatigue* approach. The last failed attempt is on `March 3, 2024` at `13:02:14.842`, thus it make sense to focus on this time.
 
@@ -160,7 +160,7 @@ Nearly all of the activity are related to user sign-in activity.
 
 Let us first focus on `EventID 4624`, here, we have `188` events only. To reduce the amount of data, we will additionally constrain our-self to connections originated from the Virtual Desktop Gateway (IP address `10.0.0.12`) only. Finally, we print the important event data into a nice table format.
 
-![[https://github.com/TekCookie75/TekCookie75.github.io/tree/master/assets/img/_posts/2024-12-15-XINTRA-Labs-Waifu-University/XINTRA-Waifu-ELK-Event-4624.png]]
+![Waifu-EventCode-4624](/assets/img/2024-12-15-XINTRA-WaifuUniversity-ELK-4624-events.png)
 
 The first login event is at `March 3, 2024` at `13:37:32.802` on `CC-JMP-01.waifu.phd`. Interestingly,  there are no prior logons in the logs, even when examining the full time scope of the provided lab data. This can convince us, that the logon on `March 3, 2024` at `13:37:32.802` is indeed anomalous and highly likely related to attacker activity! Thus, we can conclude that the beachhead host was likely `CC-JMP-01` and time of initial compromise is concluded. The `winlog.event_data.WorkstationName` field will hold the host name of the machine initiating this logon, i.e., the hostname of the threat actors machine. Here it is `283d12e66790`. This workstation name is very unique and a perfect *Indicator of Compromise* (IoC) for later threat hunting purposes!
 
@@ -199,13 +199,13 @@ We open the pre-parsed logs in *Timeline Explorer* and start to filter for the r
 
 The obtained results are depicted in the screenshot below.
 
-![[https://github.com/TekCookie75/TekCookie75.github.io/tree/master/assets/img/_posts/2024-12-15-XINTRA-Labs-Waifu-University/XINTRA-CC-JMP-01-Sysmon-1.png]]
+![Waifu-CC-JMP-01-Sysmon](/assets/img/2024-12-15-XINTRA-WaifuUniversity-CC-JMP-01-Sysmon-1.png)
 
 From the `Executable Info` column we see several enumeration activity. Beside `whoami` and `hostname`, `sc` and `wmic` was used to query for services. The enumeration was done from `cmd.exe` so we will not have the benefits of `PowerShell` logging. Anyway, with some background knowledge we can conclude, that the threat actor tried to focus on *unquoted service path names* (indicator: `findstr /i /v """`), which is the commonly known [Mitre technique T1574.009](https://attack.mitre.org/techniques/T1574/009/) often used by attackers to escalate privileges. The service enumeration took place from `2024-03-03 15:05:30` to `2024-03-03 17:53:51`. Just a few minutes later at `2024-03-03 18:16:21`, there is an event starting `Waifu Service`, which is one of the services identified by the attacker having an unquoted path, as we can conclude from the `update.txt`.
 
 We apply a global filter to the expression `Waifu Service` and focus on the date `2024-02-03`.
 
-![[https://github.com/TekCookie75/TekCookie75.github.io/tree/master/assets/img/_posts/2024-12-15-XINTRA-Labs-Waifu-University/XINTRA-Waifu-Service.png]]
+![WaifuService](/assets/img/2024-12-15-XINTRA-WaifuUniversity-WaifuService.png)
 
 From the `Executable Info` column, we can exactly spot what happened on the system!
 1. Inside of `cmd.exe` the threat actor initiated `net start "Waifu Service"`
@@ -370,7 +370,7 @@ In my opinion our best bet would be to focus again on `python.exe`, i.e., the *"
 
 We start by focusing on `Sysmon` logs due to their well known tracking of parent-child process relations. Also, we will set the parent to the known `python.exe`. Only six events remain, where three are outside the scope of the attack. 
 
-![[https://github.com/TekCookie75/TekCookie75.github.io/tree/master/assets/img/_posts/2024-12-15-XINTRA-Labs-Waifu-University/XINTRA-Waifu-CobaltStike.png]]
+![Waifu-University-CobaltStrike](/assets/img/2024-12-15-XINTRA-WaifuUniversity-CobaltStrike.png)
 
 The `base64` encoded payload in the `PowerShell` command translates to `IEX (New-Object Net.Webclient).DownloadString('http://127.0.0.1:47914/')`. We already identified this inside the `Powershell` history found earlier. Assessing the `WerFault.exe` related events is a bit tricky. On the one hand side, `python.exe` may be simply crashed and reported by `WerFault.exe`; on the other hand side, we know from the *Cobalt Strike beacon*, that `WerFault.exe` is used to cover post-exploitation activity. At least to my knowledge, we do not have any chance to judge on whether `WerFault.exe` was legitimate or not, without having a forensic image of the volatile memory. So `Sysmon EventID 1` logs are a dead end. 
 
@@ -426,7 +426,7 @@ Wrapping up our investigation until here, we know that the threat actor was able
 
 Again the story begins by analysing the Windows event logs. Since, we suspect that `CC-Admin` was compromised, we naturally should look for uncommon Windows Event Logs, `EventID 4624`, with target user name `CC-Admin`. Filtering on these parameters yields only 26 events over the entire time-range covered by this lab. 
 
-![[https://github.com/TekCookie75/TekCookie75.github.io/tree/master/assets/img/_posts/2024-12-15-XINTRA-Labs-Waifu-University/XINTRA-Waifu-DC-AdminLogins.png]]
+![Waifu-DC-Admin-Logins](/assets/img/2024-12-15-XINTRA-WaifuUniversity-DC-Admin-Logins.png)
 
 There are a few thinks worth to mention here:
 1. We have an uncommon `Remote Host` named `parrot (192.168.0.10)`.
@@ -459,11 +459,11 @@ In other words, the line of log found tells us, that `PTASpy.dll` was injected i
 
 Finally on `2024-03-07 03:17:21` the threat actor opened the `C:\PTASpy.csv` using `NOTEPAD.EXE`.
 
-![[https://github.com/TekCookie75/TekCookie75.github.io/tree/master/assets/img/_posts/2024-12-15-XINTRA-Labs-Waifu-University/XINTRA-Waifu-PTASpy-Evaluiation.png]]
+![Waifu-DC-PTASpy](/assets/img/2024-12-15-XINTRA-WaifuUniversity-PTASpy.png)
 
 Unfortunately, we can not figure out exactly, which information the attacker obtained. But we can be sure that the attacker used the obtained information! So we can try to inspect login events around the time  `2024-03-07 03:17:21`. On the domain controller, we will not have any finding here, so we decided to check the *Entra ID* logs inside the `ELK` again.
 
-![[https://github.com/TekCookie75/TekCookie75.github.io/tree/master/assets/img/_posts/2024-12-15-XINTRA-Labs-Waifu-University/XINTRA-Waifu-Ty_Yarwood.png]]
+![Waifu-Ty-Yarwood](/assets/img/2024-12-15-XINTRA-WaifuUniversity-Ty-Yarwood.png)
 
 From the screenshot we can see that right after the attacker obtained credentials by using PTASpy, we have a lot of successful logons using *Entra ID* for the user *Ty Yarwood*, still requiring MFA authentication. The authentication requests were originating from `Superloop` (`ID 38,195`). The many attempts are also already observed attack pattern, when the threat actor tried to force `ivanderplas1` to accept MFA by fatigue. However, in the scope of this lab this is a false positive. The correct solution is `cpecht7@waifu.phd`. Unfortunately, I was not able to figure out my missconception here, before publishing this blog post.
 
@@ -478,7 +478,7 @@ A short look inside the `USN Journal` already indicates that the `CC-SQL-01` mac
 
 Let us continue and check for logon events on the system. We open the event logs in *Timeline Explorer* and filter on `EventID 4624` and the relevant dates. Stacking the event data by the `TargetUserName` column, we notice, that two human accounts logged on only. Namely `CC-Admin` and `WAIFU\kscanlan6`.
 
-![[https://github.com/TekCookie75/TekCookie75.github.io/tree/master/assets/img/_posts/2024-12-15-XINTRA-Labs-Waifu-University/XINTRA-Waifu-SQL-Logons.png]]
+![Waifu-SQL-Logons](/assets/img/2024-12-15-XINTRA-WaifuUniversity-SQL-Server-Logons.png)
 
 Considering the timestamps, the logons of `WAIFU\kscanlan6` can be ignored and were part of the forensic acquisition process! Thus, the threat actor used `CC-Admin` to interact with the `CC-SQL-01` host. The first time of authentication is `2024-03-06 02:59:28` inbound from the `CC-JMP-01` machine. Access was done using `RDP` (timestamp: `2024-03-06 02:59:31`).
 
@@ -490,7 +490,7 @@ We open the parsed `$MFT` in *Timeline Explorer* and filter the `Parent Path` on
 
 Beside this, there are a directories named  `20240306` and `20240307` holding `Powershell` transaction scripts. Unfortunately, we will have no access to them anymore. So jet us focus on the database export found. The `$MFT` does not provide any information on the original file anymore, however, we can try to track the file changes using `USN Journal` data.
 
-![[https://github.com/TekCookie75/TekCookie75.github.io/tree/master/assets/img/_posts/2024-12-15-XINTRA-Labs-Waifu-University/XINTRA-Waifu-DB-Backup-nfts.png]]
+![Waifu-SQL-Server-DB-Backup](/assets/img/2024-12-15-XINTRA-WaifuUniversity-DB-Backup-ntfs.png)
 
 So the requested `MFT Entry ID` is `369707`. 
 
