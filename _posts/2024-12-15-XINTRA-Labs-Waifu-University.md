@@ -513,6 +513,3 @@ Later on, using credentials dumped from shadow copies, the threat actor was able
 The adversary was able to exfiltrate cloud-hybrid credentials from the domain controller using `PTASpy`. At the same time the group was able to create and exfiltrate a dump of the `SQL` databases on the `CC-SQL-01` server. Due to the absence of the dumped file and missing network logs (e.g., full packet capture), we can not reconstruct what exactly was obtained by the attacker. Thus, we have to assume a full dump of the database.
 
 Finally, we were able to collect the ransomware sample for further investigation and reverse engineering purposes.
-
-----
-----
