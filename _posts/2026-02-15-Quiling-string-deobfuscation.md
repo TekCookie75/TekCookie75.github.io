@@ -20,7 +20,7 @@ The sample under consideration poses the following properties:
 - SHA256: `B4043B4E86E7591012251410EC5408360C03F479165580C22CF116BD4D0C9EAE` ([VirusTotal](https://www.virustotal.com/gui/file/b4043b4e86e7591012251410ec5408360c03f479165580c22cf116bd4d0c9eae))
 - Internal name: unknown
 - File Size: size: 80.384 bytes / entropy: 6.587
-- File Type: Microsoft Linker 6.0 | Microsoft Visual C++ (32 bit)
+- File Type: Microsoft Linker 6.0 / Microsoft Visual C++ (32 bit)
 
 So lets get started by our initial static file triage!
 
@@ -29,7 +29,7 @@ So lets get started by our initial static file triage!
 
 As already mentioned in the prologue we have to deal with a Microsoft Visual C++ (32 bit) compiled binary. Loading the image into PeStudio or Binary Ninjas *Triage Summary* view we immediately notice that there are no imports at all! Thus, the binary is likely using a custom API loader to resolve its dependencies or is packed (*for the sake of this post I already checked this and can confirm that it is not packed*). Beside this, the most of the strings are short garbage looking like ones. There are only a few text artifacts telling us that the malware is somehow interacting with `SMTP`/ `POP3` and `RDP` files. Also there are references to the `DPAPI`, file directories and applications like *Outlook*. Overall this may let us assume that we have to deal with a credential stealer type of malware here.
 
-![Embedded Strings](https://tekcookie75.github.io/assets/img/posts/2026-02-15/Strings.png)
+![Embedded Strings](https://tekcookie75.github.io/assets/img/posts/2026-02-15/2026-02-15-Strings.png)
 
 While this information may was already helpful in the general classification of the malware, it does not reveal a lot about the samples concrete capabilities. Especially the missing imports are a major issue. So just using `strings` is simply not enough for this sample! 
 
@@ -52,11 +52,11 @@ nix-shell -p floss
 ```
 Once inside the shell, we mount `floss` against our sample. The output is very promising.
 
-![Embedded Strings](https://tekcookie75.github.io/assets/img/posts/2026-02-15/floss-overview.png)
+![Embedded Strings](https://tekcookie75.github.io/assets/img/posts/2026-02-15/2026-02-15-floss-overview.png)
 
 Floss was able to reconstruct 12 stack strings and **177 decoded strings**! Taking a look at the decoded ones, we obtain a lot more of insights into the binary.
 
-![Embedded Strings](https://tekcookie75.github.io/assets/img/posts/2026-02-15/floss-Strings.png)
+![Embedded Strings](https://tekcookie75.github.io/assets/img/posts/2026-02-15/2026-02-15-floss-Strings.png)
 
 In the case of this malware sample, `floss`did a quit well job. The emulation succeeded without major errors. From the results we can deduce the capabilites far better than from simple `string` command. We obtained new IoCs and/or general insights on the binary like
 
