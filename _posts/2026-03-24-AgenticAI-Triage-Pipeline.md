@@ -225,6 +225,7 @@ Using above promt, we obtain our complete malware triage agent. For the sake of 
 As we may have already expected, the triage does work really well.
 
 
+
 ## Deployment of the Triage Agent
 
 For the Deployment I decided to install the agent in a virtualizes envirnment. To this end, I set up a virtual machine running the agent. The application is executed as `systemd` service running under a user named `agent`. The application files are all stored at `/opt/malware-triage`. To be able to run claude code, the systemd unit needs to consume the environment of the `agent` user. Thhis is the only possibility, if now API key is available and we need to call `claude` interactively, like done in our setup. The complete project files can be found in my [GitHub repository](https://github.com/TekCookie75/automated-static-file-triage-agent/). To rebuild this setup, either apply the exact same steps like me ...
@@ -262,8 +263,124 @@ Looking on the results, we obtained a complete initial triage report on the samp
 
 The [reports](https://github.com/TekCookie75/automated-static-file-triage-agent/tree/main/example) can also be found in the Git repository.
 
+## Using AI means "**A**lways **I**terate"
+
+If you have deployed the agent discussed int this post and let it run over some time you propably observe that it will consum a decent abount of tokens. It is not a heavy amount, but its enough to generate unnecessary cost in the long time run.
+
+So, what it the reason for this expense? - And can we do better?
+
+The reason is quit simple we use Claude. But for which tasks actually? Let us summarize exaclty, what claude is doing in the current approach
+- Claude starts and reads its `Claude.md` and memory files from the `agent` users home directory. However, this does not make any sense for our generation of reports, since the are unlrelated.
+- Next, claude will be prompted to conduct the *static file triage*. To this end, claude needs to read our skill, just to evaluate, that it needs to start a shell script-wrapper launching the actual docker worker. So, why not directly start the docker worker from the `malware_analyzer.py`?
+- Reports were generated, claude read them into context, summarize them, and copy the results to the `/reports` directory. Actually, only here, we need the LLMs capabilities!
+
+As we can see, we waste a lot of tokens by just letting handle claude fully deterministic tradiitonal automation tasks. This is always a bad implementation. So let us fix this using claude. We can easily prompt the LLM with the above issues, and it will adopt the code to our needs. In the end, the LLM is used to handle summarization of the report only.
+
+![Refactoring the Codebase using Claude](https://tekcookie75.github.io/assets/img/posts/2026-03-24/2026-03-24-Refactoring-using-claude.png)
+
+The new approach does not only have the advantage, that it consumes less tokens, it also seperates the LLM and deterministic parts more apart. Now the LLM is only involved in summarizing text, requiring less privileges on the side of the Claude agent. Additionally, the generated Skill file becomes a pure description of a Workflow. This Playbook-like character is exactly how skills are understood in the theory. So after just one iteration, we ended up with an improved version of our triage pipeline.
+
+So, is this the end of the journey? If you trust blind code without understanding the theory probably yes. However using this pipeline in production may cost you your job. There are at least two issues with the current implementation:
+1. The system prompt primes the agents answer already into the semantic direction of malware
+2. The report contains all strings from the binary, especially the ones with high entropy yielding model hallucinations.
+
+And these are just two aspects we can solve. Not talking about the fundamental problem of semantic overlap. I.e., imagine a benign password manager and a ransomware. Semantically, they are identical!
+
+Enough of my exragation. Let us see how we can improve these aspects at least. 
+
+The second issue is technically easy addressable but requires some background to understand. If you want to dive deeper, read about vector embeddings and the superposition hypothesis. I will provide intuition here only!
+
+Putting it in simple words, high entropy input produces several compounding effects. One of them involves tokens that were rarely seen during training. For these low-frequency tokens, the learned embedding vectors remain close to their random initialization. Unlike well-trained tokens, which occupy meaningful positions in the model's geometric representation space, rare token embeddings point in essentially random directions with no 
+reliable relationship to semantically related concepts.
+
+This causes two additional problems. First, during attention and MLP processing, these random directions produce erratic intermediate representations, the model may confidently associate a rare token with an unrelated concept simply due to geometric accident. Second, high entropy input activates many unrelated knowledge clusters simultaneously, exhausting the models representational capacity and causing interference 
+between them.
+
+On top of this there is an issue during tokenization as well. Byte-Pair-Encoding tokenization was designed for meaningful human language. It has no concept of semantic validity. I.e., it will produce meaningful-looking tokens from any input, including encrypted garbage like typically found in malware samples. High entropy input doesn't just introduce rare tokens only, it introduces spuriously meaningful tokens that never corresponded to any intended concept (*may even not intended by the adversary*). The model processes these tokens as if they were real, activating knowledge clusters that have no relationship to the actual input content. This is hallucination at the tokenization layer itself — before any neural processing has even begun. To state an example, think about the encrypted data `.bakcruciallili`. In the frist place it does not have meaning, but a valid tokenization may be [`.bak`, `crucial`, `Lilli`]. The model may not assumes that it is about a crucial backup task of personal files from Lilli. In this scenario even the may contained other indicators like cryptographic primitives become sound. We may end up a missclassification.
+
+Summarizing all of this, the fatal insight here is, that the model does not pose uncertainity. The model produces 
+a confident output. It is confident wrongness! This is the mechanistic root of hallucination on rare or domain-specific inputs.
+
+Since we may now have understood the issue, we can fix it by just removing the strings with high entropy. Notice that this will help the LLM, without harming the analysts view of the sample. For the analyst there is the distribution of the strings entropy relevant. I.e., the valuable information is that there are a certain number of high-entropy strings embedded; not the exact value `«!j@f63dc...`.
+
+The reason of the first issue is quite simple and it is related to MLP cluster activation in the intermediate state of the model. I can not wrap up the entire theory here, but may provide a basic intution behind it. So let us take a look at the `summary_prompt` used by our python script to generate the summarized report.
+
+```python
+        # ── Step 5: Invoke Claude Code for executive summary ───────────────
+        dest_summary = reports_dir / f"{sha_prefix}_triage_summary.md"
+        summary_prompt = (
+            f"You are running an automated malware triage pipeline in "
+            f"HEADLESS mode.  There is no human operator — do NOT ask for "
+            f"confirmation or wait for input.\n\n"
+            f"Read the triage report at: {dest_triage}\n\n"
+            f"Write a concise executive summary (max ~300 words) to: "
+            f"{dest_summary}\n"
+            f"The summary must include: file hashes, VirusTotal verdict, "
+            f"key suspicious imports, notable IoCs, and an overall risk "
+            f"assessment (Low / Medium / High / Critical).\n\n"
+            f"Do not output anything else."
+        )
+```
+
+It starts with a fundamental biasing phrase **you are running an automated malware triage pipeline**. The precense of the keyword **malware** will already prime the models reasoning. Imagine you ar analyzing a password manager. The analysis will run, the LLM will start reasoning and while doing so, it will enable *knowledge cluster* related to malware from the initial prompt. Combining this with any presence of cryptographic primitives like commonly found in password managers, the model may conclude that it is a ransomware. We have a false positive!
+
+To avoid this, we can start with a more neutral sounding prompt:
+
+```TXT
+You are a binary analysis system performing static PE file analysis.
+
+Apply equal prior probability to all three classification outcomes 
+before examining any evidence:
+- BENIGN: consistent with legitimate software behavior
+- SUSPICIOUS: unusual patterns but potentially legitimate
+- MALICIOUS: strong indicators of malicious intent
+
+Base your classification solely on the combination of behavioral 
+indicators provided. Do not weight any single indicator in isolation.
+
+Analyze the following static analysis report and classify the sample.
+
+The following behaviors are common to both legitimate and malicious 
+software and should NOT alone indicate maliciousness:
+- Cryptographic API usage (CryptEncrypt, AES, RSA, key generation)
+- File enumeration and read/write operations
+- Network connectivity and DNS resolution
+- Process creation and management
+- Standard Windows API usage
+
+Classification must be based on the COMBINATION of behaviors and 
+their deviation from expected patterns for the identified file type.
+
+Analysis report:
+{markdown_report}
+
+Respond in the following structure:
+
+CLASSIFICATION: [BENIGN / SUSPICIOUS / MALICIOUS]
+
+INDICATORS OBSERVED:
+List each behavioral indicator found and its individual significance.
+
+REASONING:
+Explain which specific combinations of indicators drove your 
+classification and why the combination is significant.
+
+CONFIDENCE NOTE:
+Identify any behaviors that could support an alternative 
+classification and explain why you weighted them lower.
+```
+
+This prompt is by the following means better than the previous one:
+- We start with neutral context
+- We let the model reason; i.e., request answers on how the model come up with the decisions. This will help the analyst to judge on whether the summary is valid or not. (*Human in the loop principle*)
+
+Implementing these two *feature requests* is a task for our co-worker Claude. :-)
+
+
 ## Conclusion
 
-In this short blog post we provided a high-level approach of developing claude code skills to automate day to day tasks. We highlighted the critical impact of *understanding the problem statement*, and evaluation whether a task should be handled by AI or not! By a minimal working example we demonstrated how agentic AI can already help us if use it in the right way. By considering claude as our *thinkng partner* and *code writer*, we were able to keep control on the high-level features and core principaly, while at the same time speeding up development cycles usiing LLMs. The generated skill was packed in an AI application, the "Malware Triage Monitor". We provided all code generated on our GitHub repository and it is free to use and improve. However users should be aware of the risks associated with the usage of skills provided by untrustworthy external parties. Hence, if using the skill, or monitoring agent, check on your own that it works indeed as you expect.
+In this short blog post we provided a high-level approach of developing claude code skills to automate day to day tasks. We highlighted the critical impact of *understanding the problem statement*, and evaluation whether a task should be handled by AI or not! By a minimal working example we demonstrated how agentic AI can already help us if use it in the right way. By considering claude as our *thinkng partner* and *code writer*, we were able to keep control on the high-level features and core principaly, while at the same time speeding up development cycles usiing LLMs. The generated skill was packed in an AI application, the "Malware Triage Monitor". In an iterative approach, we used the *human (developer) in the loop* concept to improve the agent. We demonstrated that reliable and working agentic AI requires deep understaning of the LLMs internals. Using agentic AI without this knowledge opens doors on attack surface and safety concerns. 
 
-That's the entire hype with agentic AI and LLMs for today. 
+We provided all code of the initial generated prototype on our GitHub repository and it is free to use and improve. We proposed the reader with two improvements not part of the provided code but essentially to productive operations. Users should be aware of the risks associated with the usage of skills provided by untrustworthy external parties. Hence, if using the skill, or monitoring agent, check on your own that it works indeed as you expect.
+
+That's the entire hype with agentic AI and LLMs for today.
