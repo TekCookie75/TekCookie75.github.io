@@ -225,8 +225,6 @@ Using above promt, we obtain our complete malware triage agent. For the sake of 
 As we may have already expected, the triage does work really well.
 
 
----
-
 ## Deployment of the Triage Agent
 
 For the Deployment I decided to install the agent in a virtualizes envirnment. To this end, I set up a virtual machine running the agent. The application is executed as `systemd` service running under a user named `agent`. The application files are all stored at `/opt/malware-triage`. To be able to run claude code, the systemd unit needs to consume the environment of the `agent` user. Thhis is the only possibility, if now API key is available and we need to call `claude` interactively, like done in our setup. The complete project files can be found in my [GitHub repository](https://github.com/TekCookie75/automated-static-file-triage-agent/). To rebuild this setup, either apply the exact same steps like me ...
