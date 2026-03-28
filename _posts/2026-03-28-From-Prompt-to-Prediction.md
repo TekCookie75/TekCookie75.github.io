@@ -12,9 +12,9 @@ mathjax: true
 author: TekCookie75
 ---
 
-In the late 2025 to the beginning of 2026 the usage of AI, especially the usage of Large Language Models (LLMs), became more and more prominent. With the two major contributions of [OpenClaw](https://openclaw.ai) and [Claude Code](https://claude.ai) agentic AI systems (*so called AI assistents*) become accessible to the public. Due to the lowered boundary of accessibility, on the social media now everyone talks about agentic AI systems, Claude Code and OpenClaw. Nearly every day there are posts about the latest feature updates, the must have skill to install or just another *vibe coded* project. The development of agentic AI and coding assistents seems to be on of the most exciting developments in the recent decades. But have you every asked yourself how well you understood the technology you are using? If yes, this blog post is for you! In this post I will try to provide an abstract, high-level and intuitive explaination how your initial prompt is passed down the model until the prediction of the next token. I will try to avoid deep mathematical theory and favor analogous examples. So this article is for everyone who wants to understande LLM on a intuitive level. At the same time this means that it is not a research post. Also due to abstraction there will be statements not holding all the time true. This is the tradeoff, we have to acceppt.
+In the late 2025 to the beginning of 2026 the usage of AI, especially the usage of Large Language Models (LLMs), became more and more prominent. With the two major contributions of [OpenClaw](https://openclaw.ai) and [Claude Code](https://claude.ai) agentic AI systems (*so called AI assistents*) become accessible to the public. Due to the lowered boundary of accessibility, on the social media now everyone talks about agentic AI systems, Claude Code and OpenClaw. Nearly every day there are posts about the latest feature updates, the must have skill to install or just another *vibe coded* project. The development of agentic AI and coding assistents seems to be one of the most exciting developments in the recent decades. But have you every asked yourself how well you understood the technology you are using? If yes, this blog post is for you! In this post I will try to provide an abstract, high-level and intuitive explaination how your initial prompt is passed down the model until the prediction of the next token. I will try to avoid deep mathematical theory and favor analogous examples. So this article is for everyone who wants to understande LLM on a intuitive level. At the same time this means that it is not a research post. Also due to abstraction there will be statements not holding all the time true. This is the tradeoff, we have to acceppt.
 
-Like a famous mathematician said once: __Every Model is wrong. But at least some of them are helpful in understanding the world__. 
+Like a famous mathematician said once: *Every Model is wrong. But at least some of them are helpful in understanding the world*. 
 
 So I hope, this blog post will be helpful for at least some of the readers. If you really want to go deeper, after reading this article you will have the right *buzzwords* to go on.
 
@@ -124,7 +124,7 @@ The normalized dot product
 
 $$similarity(X, Y) := dot(X,Y) / (\lvert X \rvert \cdot \lvert Y \rvert)$$
 
-is also denoted as **cosine similarity** in the domain specific language. Also due to the normalization all distances are between 0 and 1, where 0 means no relation and 1 means identical, which does add additional numerical stability. 
+is also denoted as **cosine similarity** in the domain specific language. Also due to the normalization all "distances" are between $$-1$$ and $$1$$, where $$0$$ means no relation, $$1$$ means identical direction and $$-1$$ opposite directions. Again, remember, when we talk about semantic distance, we will actually refer to angular distances! Keeping the values bounded also constributes to numerical stability.
 
 This approach does pose another advantage. We do not need to learn and store a specific *unembedding* matrix. If you write down all these operations on paper, you will observe that calculating all these dot products is equal to a multiplication with the transposed of the embedding matrix. This phenomen is called weight tying and saves a lot of bytes, since we only need to store once.
 
@@ -174,7 +174,7 @@ I need some money, where is the next bank?
 
 it will apply the following steps:
 1. Use multi-head attention to establish context between each of the words. I.e., how much does each token attent to the other one. In the above prompt the model may observe the relation between *money* and *bank*, pushing the *bank* more into the direction of *finance*
-2. Once context is enrighed, knowledge needs to be looked up for each token. E.g., *bank* was previously enriched by *finance*, now the MLB block will look up the corresponding knowledge of "bank + finance"
+2. Once context is enrighed, knowledge needs to be looked up for each token. E.g., *bank* was previously enriched by *finance*, now the MLP block will look up the corresponding knowledge of "bank + finance"
 
 This is quite the same way humans operate. We first establish context, then retrieve out learned knowledge!
 
@@ -186,7 +186,7 @@ Before exactly understanding how attention and MLP works, let us illustrate the 
 
 Since it is so fundamental, let us repeat it again! The MLP layer are two fold. They pose a so called multi-head attention, and the actual MLP block. 
 - The attention tries to answer the question of contribution of each token to is previous and followers. So for each token there are calculated values that keep track of how much this tokens contributes to others and how much other tokens contribute to itself. This is important to establish contextual relation over the prompt
-- The MLP Blocks are basically a chain of two linear mappings believed to hold the actual knowledge by a key-value store mechanism. More later on this.
+- The MLP Blocks are basically a chain of two linear mappings cut by a non-linear activation function, which are believed to hold the actual knowledge by a key-value store mechanism. More later on this.
 
 #### Minor Words about the Multi-Head Attention
 
@@ -404,7 +404,7 @@ User Goal → LLM → Action → LLM → Action → ... → Output to the user
 
 This chain of actions break us to a major issue with agentic AI. In our basic observations we learned, that LLMs are bad at working on high entropy inputs. However, the output from actions may not always be low entropy. Imaging a malware triage agent is running `strings`, then decides what to do next. Now the context is infected with high-entropy values. The very some holds true for logs, or errors if tool execution failes. All this contributes into a bad direction may letting the LLM fail on its intermediate input. The agent may misbehave by a probability of $$p = 0.05$$ on one iteration. Usually agents are thought for the long time autonmous run, executing multiple iterations. The failure rate drastically increases. The the question is not if agentic AI will fail. Its more about when it will happen and how we can handle that cases.
 
-Take a look at the following distribution describing the probability $$P(n=k)$$ expressing that there is at least one failure in k steps.
+Take a look at the following distribution describing the probability $$P(n=k)$$ expressing that there is at least one failure in k steps. Notice, that we assume here that each step fails independently with the same probability $$p$$. In practice, errors compound. One bad step can corrupt the context, making subsequent steps more likely to fail (*increasing* $$p$$ over iterations). So the formula is actually an optimistic lower bound! Real-world agent failure rates are likely worse than this model predicts. Still, on the other side we assumed a relative large and pesimistic probability of $$p = 0.05$$. Anyways, this entire discussion is more about intuition that about values.
 
 $$
 \begin{align}
