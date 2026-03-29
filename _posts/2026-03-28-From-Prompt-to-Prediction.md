@@ -22,7 +22,7 @@ The blog post is three part, where the parts build up on each other. In **Part I
 
 We follow up by **Part II**, where agentic AI is discussed. Bulding up on the gained knowledge from the first part we will elaborate on situations where agentic AI may will fail. We will discuss the error accumulation problem in detail providing visibility and awareness with respect to the usage of fully autonomous systems. This section is not about telling AI bad, we will try to give a feel about robust agent engineering and design instead, and make the user aware of possibly pit-falls.
 
-The last part, **Part III**, wraps up everything. Bridging the fundamental concepts and the currently growing market needs. We will highlight the discrepancy between market demands and robust AI deployments, finishing with a personal opinion on that divergence.  
+The final part, **Part III**, will likely be the most subjective one and refelct my arugmentation on AI development. Bridging the fundamental concepts worked out in this blog post and the currently growing market needs, we will highlight the discrepancy between market demands, users requests and robust AI deployments, finishing with a personal opinion on that divergence. Thereby we will argue by three perspectives, the perspective of the field of cyber security, the users perspective, and the one of the growing AI market in general.
 
 While walking through this entire post I will provide real-world examples, analogous, and pit-falls where thinks can go wrong including the root cause analysis, at any time possible. 
 
@@ -461,7 +461,41 @@ Thinking in detail about possible failures, we will likely find some more. Still
 
 ---
 
-# Part III: The Divergence between Market demands and safe deployments
+# Part III: The Divergence Problem
+
+All previous parts just discussed theoretical insights. By this final part I want to bridge to real world AI deployments. Working out something I denoted as the divergence problem. We will see that the specific field (cyber security, user desires, market demands) does not always allign well with the requirements of safe AI deployments. The arguments are based on theory, still being subjective and momentary. Any change in the AI landscape, which is currently very dynamic, can change everything! This is also the reason I put this section last. So while reading the next sections keep this in mind.
+
+## The Divergence in Cyber Sequrity
+
+A question went viral in the 2025 was, wether *AI will replace my (your) job*. This superficial question does actually hide a more relevant question, *whether AI nature alligns well with out domain specific data.* The answer to this question is very domain specific. For some fields the honest future will may be replacement, while others are not replacable at all. My following argumentation will be just about my field: *Cyber Security*
+
+So how well alligns the "Cyber Security data" with the nature of AI, especially LLMs?
+
+During that post we learned about the three major impacts contributing to bad classification in LLMs, namely the entropy, informatin density (coherence) and input length in general. For the case auf automated and autonmous malware analysis and classification, we already discussed the miss allignment and holoistically denoted *malware as the natural enemy of LLMs*. The reason was exactly that high entropy, and information density. However, cyber security is more than just malware analysis, which makes the situation actually more worse! In this post we worked out, that LLMs benifit from domain specific training. My major argument here is that Cyber Security is not just *one* domain (or at least not a small one) in the sense of AI models. Already the malware example makes something clear. A LLM trying to classify, e.g., a credential stealer, does need to have knowledge in the fields of encryption, networking, an where credentials are stored. Stepping ahead and thinking about automated agentic AI driven log processing in SIEMs the situation becomes even more worse. Log data is high information density by nature; not yet arguing about the amount of log data generated in an enterprise. So the logs to be analysed by the LLM will by high non coherent covering *networking*, *filesystem*, *registry*, and any even non computer science related field activated by accident due to its presence in filenames, URLs or usernames. So feeding log data into a general purpose model we are used to use nowadays will yield activation of many misleading MLP knowledge clusters. Imagine you are a token in the input stram and all the other tokens try to pull on you by their attention. You will literally be ripped. Expecting a helpful result from such a disrupted token may becomes more a desire than a fact. This holds even true, if you want expect the model to summarize a text covering multiple domains. 
+
+So to sum up, already the input data (logs, malware sample, etc.) does not allign well with LLMs. However, there is another issue in cyber security. Usually cyber security means being confronted with people or groups explicitely trying to break the boundaries. These additional threats add in. 
+
+To put the nail on the head, let us end with a "LLMs work best if, ... but Cyber Security demands ..." comparision
+
+| **What LLMs like**         | **What Cyber Security provide** |
+| -------------------------- | ------------------------------- |
+| Input entropy is low       | Involves maximum entropy inputs |
+| Tasks are bounded in scope | Requires unbounded novel reasoning |
+| Context is non-adversarial | Is defined by adversarial context |
+| Synthesis can be avoided   | The work is fundamentally synthesis |
+| Failure is recoverable     | The decisions involves irreversible consequences |
+
+## The Divergence from Users Perspective
+
+Users not enabled to build AI applications whose code the could not have written on their own, yielding a lot of applicatons created by developers who were not able to understand their products code. Without understanding the product, you will now be able to judge on whether it is safe or secure to use. Due to the low failing probability and missing visibility of "AI mistakes", our condifende in the LLMs results increase. The later also increases the impact due to trust based wider application of *vibe coded* software. Since risk is defined by the product of propability and impact, even with small failing propability naturally the risk increases. Since social media primes us more and more to use AI on every task, like appointment planning, email summarization, file system structure assistants, etc., and nobody want to be left behind missing out the AI boom, more and more data is processed by AI. On a single failure or adversarial influence all these confidential data may be impacted. According to my observations the average user presenting her/his AI usage on social media, does voilate least privilege and controlled LLM input principles by design. Additionally, the medial hype does prime society more and more into autonomous AI operations. Users will increasingly request the chat bot or AI agent just for a result skipping the reasoning. However, if reasoning is ommitted the output can not be verified anymore. All this may yield, that we lose our capability of critical thinking and questioning. I personally see an increasing trend with more dependence on AI. My final recommendation is that you should work with AI in such a way that you can always continue to work the next day without AI. Enable explicit reasoning extractions, question the models claims and use LLMs as your thinking partner not problem solver! This may be the only way to stop this divergence.
+
+## The Divergence between Market demands and safe deployments
+
+On the large scale the divergence problem shows up in current market grows. Nearly every day a new AI feature is released. Everybody is afraid of loosing the AI race. The models context size increases above ridiciolous sizes. the models trend into general purpose ones, just to sell more. All this does not scale will with the current LLM transformer architecture. Anyways, as long as the market is driven by money and fear of missing out, this divergence between safe AI deployments and the current market developments will remain. 
+
+---
+
+# Conclusion
 
 AI and AI agents entered our every day life and will not go away anymore. More and more people will start build amazing new tools, agentic systems and enrich this world by just using natural language. While this development is a big enabler, it also yields safety and security risks. With every 100th well designed AI application there is may one cathastropically failing. The growing market shares demand the AI developers to provide more and more general purpose models, not trained on domain knowledge, with increasingly capabilities and ridicoulous context window sizes. However, after reading this post you will likely observe the divergence with safe AI deployment strategies. These opossite goals does not allign well and may yield in personal and/or financial loss at some point. All this said, LLMs became a strong enabler. They allow us to speed up code generation. Automate tasks, we were simply not able to automte some years ago due to there non-deterministic nature. The important aspect seperating the short-time winners from the long-term ones will be the understanding in basic AI principles. It is not about understanding every detail, work through every and each proof. No this will just slow you down. The nowadays art is to develop new AI applications but while doing so keep the intuition and pitfalls in your head at least. If you follow this approach you will likely have an awesome future a head. So far my opinion on agentic AI, LLMs and the current situation in social media.
 
